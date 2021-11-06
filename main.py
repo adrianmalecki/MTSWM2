@@ -1,16 +1,13 @@
 import numpy as np
-from sklearn import clone
-from sklearn.feature_selection import r_regression, chi2
+from sklearn.feature_selection import r_regression
 from sklearn.neural_network import MLPClassifier as mlp
-from sklearn.metrics import accuracy_score, plot_confusion_matrix, classification_report
-from sklearn.model_selection import train_test_split, RepeatedStratifiedKFold
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.feature_selection import SelectKBest
-import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
 
 # wczytanie zestawu danych
-from sklearn.preprocessing import StandardScaler
 
 dataset = np.genfromtxt("wisconsin.csv", delimiter=",")
 X = dataset[1:, :-1]
@@ -53,16 +50,16 @@ print(classifiers)
 #2-krotnej walidacji krzyżowej (ang. Cross-validation). Jakość klasyfikacji
 #(poprawność diagnozy) należy mierzyć metryką dokładności
 #RepeatedKFold repeats K-Fold n times. It can be used when one requires to run KFold n times, producing different splits in each repetition.
-rskf = RepeatedStratifiedKFold(
-    n_splits=2, n_repeats=5, random_state=4352
-)
+
+rskf = RepeatedStratifiedKFold(n_splits=N_SPLITS, n_repeats=N_REPEATS, random_state=7312)
 scores = []
 #sc_X = StandardScaler()
 for clf in classifiers:
     #print('tu')
     #print(classifiers[clf])
-    k = [7,8,9]
+    k = [4,5,6,7,8,9]
     for i in k:
+        scores_temp = []
         X_new = SelectKBest(score_func=r_regression, k=i).fit_transform(X, y)
         #print(X_new)
         for train_index, test_index in rskf.split(X_new, y):
@@ -71,10 +68,13 @@ for clf in classifiers:
             y_train, y_test = y[train_index], y[test_index]
             classifiers[clf].fit(X_train, y_train)
             predict = classifiers[clf].predict(X_test)
-            scores.append(accuracy_score(y_test, predict))
+            scores_temp.append(accuracy_score(y_test, predict))
             print('MLP: ', classifiers[clf], 'k: ', i, 'result: ')
             print(accuracy_score(y_test, predict))
-    np.save("results", scores)
+        scores.append(np.mean(scores_temp))
+
+
+    np.savetxt("results.csv", scores, delimiter=",")
 
 
 
