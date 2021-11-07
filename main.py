@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from sklearn.feature_selection import r_regression
 from sklearn.neural_network import MLPClassifier as mlp
 from sklearn.metrics import accuracy_score
@@ -11,7 +12,7 @@ warnings.filterwarnings("ignore")
 N_SPLITS = 2
 N_REPEATS = 5
 
-FEATURES_RANGE = range(7, 10)
+FEATURES_RANGE = range(1, 10)
 
 HIDDEN_LAYER_SIZES = [25, 50, 100]
 MOMENTUM_VALUES = [0.0, 0.9]
@@ -58,7 +59,6 @@ def experiment(classifiers, X, y):
     scores = np.zeros((len(classifiers), N_SPLITS * N_REPEATS))
 
     for clf_id, clf_name in enumerate(classifiers):
-        print(clf_id)
         X_new = SelectKBest(score_func=r_regression, k=classifiers[clf_name].num_of_features).fit_transform(X, y)
 
         for fold_id, (train, test) in enumerate(rskf.split(X_new, y)):
@@ -68,20 +68,46 @@ def experiment(classifiers, X, y):
             y_pred = clf.predict(X_new[test])
             scores[clf_id, fold_id] = accuracy_score(y[test], y_pred)
 
-    mean = np.mean(scores, axis=1)
-    std = np.std(scores, axis=1)
+    results_of_experiment = {
+        'num_of_features': [],
+        'hidden_layer_size': [],
+        'momentum': [],
+        'mean_score': [],
+        'std_score': []
+    }
 
-    # for clf_id, clf_name in enumerate(classifiers):
-    #     print("%s: %.3f (%.2f)" % (clf_name, mean[clf_id], std[clf_id]))
+    for score, classifier in zip(scores, classifiers):
+        mean_score = np.mean(score)
+        std_score = np.std(score)
+        num_of_features, hidden_layer_size, momentum_value = classifier
 
-    #np.save("results", scores)
-    np.savetxt("results.csv", scores, delimiter=",")
+        results_of_experiment['num_of_features'].append(num_of_features)
+        results_of_experiment['hidden_layer_size'].append(hidden_layer_size)
+        results_of_experiment['momentum'].append(momentum_value)
+        results_of_experiment['mean_score'].append(mean_score)
+        results_of_experiment['std_score'].append(std_score)
 
+    '''
+    print("Rezultaty koncowe: (Liczba cech, Liczba neuronow, momentum): Srednia (Odchylenie standardowe)")
+    for count in enumerate(results_of_experiment['mean_score']):
+        print("MLPClassifier({0}, {1}, {2}): {3:.5f} {4:.4f}".format(results_of_experiment['num_of_features'][count[0]],
+                                                              results_of_experiment['hidden_layer_size'][count[0]],
+                                                              results_of_experiment['momentum'][count[0]],
+                                                              results_of_experiment['mean_score'][count[0]],
+                                                              results_of_experiment['std_score'][count[0]]))
 
+    '''
+    np.save("results", scores)
+    return  results_of_experiment
+
+def show_results(old_results):
+    results = pd.DataFrame(old_results)
+    print(results.sort_values(by="mean_score", ascending=False))
 if __name__ == '__main__':
     X, y = get_data()
     classifiers = get_classifiers()
-    experiment(classifiers, X, y)
+    result_dict = experiment(classifiers, X, y)
+    show_results(result_dict)
 
 
 
