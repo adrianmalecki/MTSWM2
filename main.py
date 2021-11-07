@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 N_SPLITS = 2
 N_REPEATS = 5
 
-FEATURES_RANGE = range(9, 10)
+FEATURES_RANGE = range(1, 10)
 
 HIDDEN_LAYER_SIZES = [25, 50, 100]
 MOMENTUM_VALUES = [0.0, 0.9]
@@ -110,13 +110,15 @@ def show_results(old_results):
 def upload_scores():
     scores = np.load("results.npy")
     return scores
+
 def t_student(scores):
     alfa = 0.05
-    t_statistic = np.zeros((len(classifiers), len(classifiers)))
-    p_value = np.zeros((len(classifiers), len(classifiers)))
+    len_cls = int(len(classifiers)/len(list(FEATURES_RANGE)))
+    t_statistic = np.zeros((len_cls, len_cls))
+    p_value = np.zeros((len_cls, len_cls))
 
-    for i in range(len(classifiers)):
-        for j in range(len(classifiers)):
+    for i in range(len_cls):
+        for j in range(len_cls):
             t_statistic[i, j], p_value[i, j] = ttest_rel(scores[i], scores[j])
 
     headers = ["25, 0.0", "25, 0.9", "50, 0.0", "50, 0.9", "100, 0.0", "100, 0.9"]
@@ -128,13 +130,13 @@ def t_student(scores):
 
     print("t-statistic:\n", t_statistic_table, "\n\np-value:\n", p_value_table)
 
-    advantage = np.zeros((len(classifiers), len(classifiers)))
+    advantage = np.zeros((len_cls, len_cls))
     advantage[t_statistic > 0] = 1
     advantage_table = tabulate(np.concatenate(
         (names_column, advantage), axis=1), headers)
     print("Advantage:\n", advantage_table)
 
-    significance = np.zeros((len(classifiers), len(classifiers)))
+    significance = np.zeros((len_cls, len_cls))
     significance[p_value <= alfa] = 1
     significance_table = tabulate(np.concatenate(
         (names_column, significance), axis=1), headers)
@@ -145,6 +147,19 @@ def t_student(scores):
         (names_column, stat_better), axis=1), headers)
     print("Statistically significantly better:\n", stat_better_table)
 
+def t_student_for_feature(scores):
+    score_temp = []
+    j = 1
+    for i, score in enumerate(scores):
+        if ((i + 1) % 6 != 0):
+            score_temp.append(score)
+        else:
+            score_temp.append(score)
+            print("\nParowe testy statystyczne - t-statystyka oraz p-wartość dla  klasyfikatorow o liczbie cech: {0}\n".format(j))
+            j = j + 1
+            t_student(score_temp)
+            score_temp = []
+
 
 if __name__ == '__main__':
     X, y = get_data()
@@ -154,7 +169,9 @@ if __name__ == '__main__':
     print("\nExperiment ends, results:\n")
     show_results(result_dict)
     print("\nAnalisys starts\n")
-    t_student(upload_scores())
+    t_student_for_feature(upload_scores())
+
+
 
 
 
