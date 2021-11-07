@@ -6,13 +6,16 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.feature_selection import SelectKBest
 from sklearn.base import clone
+from tabulate import tabulate
+from scipy.stats import ttest_rel
 import warnings
 warnings.filterwarnings("ignore")
+
 #Zmienne globalne
 N_SPLITS = 2
 N_REPEATS = 5
 
-FEATURES_RANGE = range(1, 10)
+FEATURES_RANGE = range(9, 10)
 
 HIDDEN_LAYER_SIZES = [25, 50, 100]
 MOMENTUM_VALUES = [0.0, 0.9]
@@ -103,11 +106,55 @@ def experiment(classifiers, X, y):
 def show_results(old_results):
     results = pd.DataFrame(old_results)
     print(results.sort_values(by="mean_score", ascending=False))
+
+def upload_scores():
+    scores = np.load("results.npy")
+    return scores
+def t_student(scores):
+    alfa = 0.05
+    t_statistic = np.zeros((len(classifiers), len(classifiers)))
+    p_value = np.zeros((len(classifiers), len(classifiers)))
+
+    for i in range(len(classifiers)):
+        for j in range(len(classifiers)):
+            t_statistic[i, j], p_value[i, j] = ttest_rel(scores[i], scores[j])
+
+    headers = ["25, 0.0", "25, 0.9", "50, 0.0", "50, 0.9", "100, 0.0", "100, 0.9"]
+    names_column = np.array([["25, 0.0"], ["25, 0.9"], ["50, 0.0"], ["50, 0.9"], ["100, 0.0"], ["100, 0.9"]])
+    t_statistic_table = np.concatenate((names_column, t_statistic), axis=1)
+    t_statistic_table = tabulate(t_statistic_table, headers, floatfmt=".2f")
+    p_value_table = np.concatenate((names_column, p_value), axis=1)
+    p_value_table = tabulate(p_value_table, headers, floatfmt=".2f")
+
+    print("t-statistic:\n", t_statistic_table, "\n\np-value:\n", p_value_table)
+
+    advantage = np.zeros((len(classifiers), len(classifiers)))
+    advantage[t_statistic > 0] = 1
+    advantage_table = tabulate(np.concatenate(
+        (names_column, advantage), axis=1), headers)
+    print("Advantage:\n", advantage_table)
+
+    significance = np.zeros((len(classifiers), len(classifiers)))
+    significance[p_value <= alfa] = 1
+    significance_table = tabulate(np.concatenate(
+        (names_column, significance), axis=1), headers)
+    print("Statistical significance (alpha = 0.05):\n", significance_table)
+
+    stat_better = significance * advantage
+    stat_better_table = tabulate(np.concatenate(
+        (names_column, stat_better), axis=1), headers)
+    print("Statistically significantly better:\n", stat_better_table)
+
+
 if __name__ == '__main__':
     X, y = get_data()
     classifiers = get_classifiers()
+    print("\nExperiment starts\n")
     result_dict = experiment(classifiers, X, y)
+    print("\nExperiment ends, results:\n")
     show_results(result_dict)
+    print("\nAnalisys starts\n")
+    t_student(upload_scores())
 
 
 
