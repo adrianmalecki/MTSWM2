@@ -4,15 +4,16 @@ from sklearn.neural_network import MLPClassifier as mlp
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.feature_selection import SelectKBest
+from sklearn.base import clone
 import warnings
 warnings.filterwarnings("ignore")
 #Zmienne globalne
 N_SPLITS = 2
 N_REPEATS = 5
 
-FEATURES_RANGE = range(1, 8)
+FEATURES_RANGE = range(7, 10)
 
-HIDDEN_LAYER_SIZES = [20, 50, 90]
+HIDDEN_LAYER_SIZES = [25, 50, 100]
 MOMENTUM_VALUES = [0.0, 0.9]
 
 # wyznaczenie rankingu cech za pomocą współczynnika korelacji Pearsona
@@ -28,16 +29,20 @@ def get_data(): # wczytanie zestawu danych
 
 def get_classifiers():
     classifiers = {}
-    for hidden_layer_size in HIDDEN_LAYER_SIZES:
-        for momentum_value in MOMENTUM_VALUES:
-            new_classifier = mlp(
-                hidden_layer_sizes=(hidden_layer_size,), momentum=momentum_value
-            )
+    for num_of_features in FEATURES_RANGE:
+        for hidden_layer_size in HIDDEN_LAYER_SIZES:
+            for momentum_value in MOMENTUM_VALUES:
+                new_classifier = mlp(
+                    hidden_layer_sizes=(hidden_layer_size,), momentum=momentum_value
+                )
 
-            classifiers[(
-                hidden_layer_size,
-                momentum_value
-            )] = new_classifier
+                new_classifier.num_of_features = num_of_features
+
+                classifiers[(
+                    num_of_features,
+                    hidden_layer_size,
+                    momentum_value
+                )] = new_classifier
 
     return classifiers
 
@@ -47,29 +52,31 @@ def get_classifiers():
 #RepeatedKFold repeats K-Fold n times. It can be used when one requires to run KFold n times, producing different splits in each repetition.
 
 def experiment(classifiers, X, y):
-    rskf = RepeatedStratifiedKFold(n_splits=N_SPLITS, n_repeats=N_REPEATS, random_state=7312)
-    scores = []
-    # sc_X = StandardScaler()
-    for clf in classifiers:
-        # print('tu')
-        # print(classifiers[clf])
-        k = [4, 5, 6, 7, 8, 9]
-        for i in k:
-            scores_temp = []
-            X_new = SelectKBest(score_func=r_regression, k=i).fit_transform(X, y)
-            # print(X_new)
-            for train_index, test_index in rskf.split(X_new, y):
-                # print("TRAIN:", train_index, "TEST:", test_index)
-                X_train, X_test = X[train_index], X[test_index]
-                y_train, y_test = y[train_index], y[test_index]
-                classifiers[clf].fit(X_train, y_train)
-                predict = classifiers[clf].predict(X_test)
-                scores_temp.append(accuracy_score(y_test, predict))
-                print('MLP: ', classifiers[clf], 'k: ', i, 'result: ')
-                print(accuracy_score(y_test, predict))
-            scores.append(np.mean(scores_temp))
+    rskf = RepeatedStratifiedKFold(
+        n_splits=N_SPLITS, n_repeats=N_REPEATS, random_state=42
+    )
+    scores = np.zeros((len(classifiers), N_SPLITS * N_REPEATS))
 
-        np.savetxt("results.csv", scores, delimiter=",")
+    for clf_id, clf_name in enumerate(classifiers):
+        print(clf_id)
+        X_new = SelectKBest(score_func=r_regression, k=classifiers[clf_name].num_of_features).fit_transform(X, y)
+
+        for fold_id, (train, test) in enumerate(rskf.split(X_new, y)):
+            clf = clone(classifiers[clf_name])
+            print(clf)
+            clf.fit(X_new[train], y[train])
+            y_pred = clf.predict(X_new[test])
+            scores[clf_id, fold_id] = accuracy_score(y[test], y_pred)
+
+    mean = np.mean(scores, axis=1)
+    std = np.std(scores, axis=1)
+
+    # for clf_id, clf_name in enumerate(classifiers):
+    #     print("%s: %.3f (%.2f)" % (clf_name, mean[clf_id], std[clf_id]))
+
+    #np.save("results", scores)
+    np.savetxt("results.csv", scores, delimiter=",")
+
 
 if __name__ == '__main__':
     X, y = get_data()
