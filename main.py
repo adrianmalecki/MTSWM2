@@ -20,11 +20,6 @@ FEATURES_RANGE = range(1, 10)
 HIDDEN_LAYER_SIZES = [25, 50, 100]
 MOMENTUM_VALUES = [0.0, 0.9]
 
-# wyznaczenie rankingu cech za pomocą współczynnika korelacji Pearsona
-#feature_ranking = sorted(r_regression(X, y, center=True), reverse=True)
-#print(feature_ranking)
-
-
 def get_data(): # wczytanie zestawu danych
     dataset = np.genfromtxt("wisconsin.csv", delimiter=",")
     X = dataset[1:, :-1]
@@ -49,11 +44,6 @@ def get_classifiers():
                 )] = new_classifier
 
     return classifiers
-
-#Ewaluacja z wykorzystaniem protokołu badawczego 5 razy powtórzonej
-#2-krotnej walidacji krzyżowej (ang. Cross-validation). Jakość klasyfikacji
-#(poprawność diagnozy) należy mierzyć metryką dokładności
-#RepeatedKFold repeats K-Fold n times. It can be used when one requires to run KFold n times, producing different splits in each repetition.
 
 def experiment(classifiers, X, y):
     rskf = RepeatedStratifiedKFold(
@@ -101,7 +91,7 @@ def experiment(classifiers, X, y):
 
     '''
     np.save("results", scores)
-    return  results_of_experiment
+    return results_of_experiment
 
 def show_results(old_results):
     results = pd.DataFrame(old_results)
