@@ -32,7 +32,9 @@ def get_classifiers():
         for hidden_layer_size in HIDDEN_LAYER_SIZES:
             for momentum_value in MOMENTUM_VALUES:
                 new_classifier = mlp(
-                    hidden_layer_sizes=(hidden_layer_size,), momentum=momentum_value
+                    hidden_layer_sizes=(hidden_layer_size,),
+                    momentum=momentum_value,
+                    random_state=69
                 )
 
                 new_classifier.num_of_features = num_of_features
@@ -47,7 +49,7 @@ def get_classifiers():
 
 def experiment(classifiers, X, y):
     rskf = RepeatedStratifiedKFold(
-        n_splits=N_SPLITS, n_repeats=N_REPEATS, random_state=42
+        n_splits=N_SPLITS, n_repeats=N_REPEATS, random_state=420
     )
     scores = np.zeros((len(classifiers), N_SPLITS * N_REPEATS))
 
